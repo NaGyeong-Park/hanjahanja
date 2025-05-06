@@ -110,8 +110,6 @@ export const 종성_LIST = [
 	"ㅎ",
 ] as const;
 
-// 0021 ~007E
-// 33~ 126
 export const BASIC_LIST = [
 	"!",
 	'"',

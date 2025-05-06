@@ -1,167 +1,224 @@
-import { SVGPathData } from "svg-pathdata";
-import Potrace from "potrace";
 import opentype from "opentype.js";
-import { Base64 } from "../types/core";
+import { BASIC_LIST, 종성_LIST, 중성_LIST, 초성_LIST } from "./constants";
+import { generateGlyphs, generateHangulGlyphs } from "./font";
 import {
-	초성_LIST,
-	중성_LIST,
-	종성_LIST,
-	중성ItemType,
-	중성Type,
-} from "./constants";
+	geBasicPathStrings,
+	get종성PathStrings,
+	get중성PathStrings,
+	get초성1PathStrings,
+	get초성2PathStrings,
+} from "./image";
 
-export const convertImageToSvgString = (base64: Base64): Promise<string> => {
-	return new Promise((resolve, reject) => {
-		const trace = new Potrace.Potrace();
-		trace.loadImage(base64, (err) => {
-			if (err) {
-				console.error(err);
-				return reject("SVG 변환 중 오류가 발생했습니다.");
-			}
+export const generateFont = async (
+	template: [
+		HTMLImageElement,
+		HTMLImageElement,
+		HTMLImageElement,
+		HTMLImageElement,
+		HTMLImageElement,
+	],
+) => {
+	const TEMPLATE_GRID_RATIO = Math.floor((5 / 6) * 100) / 100;
+	const FontHeight = 2048;
+	const AdvanceWidth = FontHeight * TEMPLATE_GRID_RATIO;
 
-			resolve(
-				// NOTE: types 패키지 타입 정의가 잘못되어있음
-				trace.getPathTag(
-					undefined as unknown as string,
-					undefined as unknown as number,
-				),
-			);
-		});
-	});
-};
-
-export const mergeSVGPathDefinitions = (paths: string[]) => {
-	return paths.join(" ");
-};
-
-export const svgPathToOpentypePath = (d: string, fontHeight: number) => {
-	const path = new opentype.Path();
-	const commands = new SVGPathData(d).toAbs().commands;
-	const flipY = (y: number) => {
-		return fontHeight - y;
+	const 초성PathStrings = {
+		...(await get초성1PathStrings(template[0])),
+		...(await get초성2PathStrings(template[1])),
 	};
+	const 중성PathStrings = await get중성PathStrings(template[2]);
+	const 종성PathStrings = await get종성PathStrings(template[3]);
+	const basicPathStrings = await geBasicPathStrings(template[4]);
 
-	commands.forEach((cmd) => {
-		switch (cmd.type) {
-			case SVGPathData.MOVE_TO:
-				path.moveTo(cmd.x, flipY(cmd.y));
-				break;
-			case SVGPathData.LINE_TO:
-				path.lineTo(cmd.x, flipY(cmd.y));
-				break;
-			case SVGPathData.CURVE_TO:
-				path.curveTo(
-					cmd.x1,
-					flipY(cmd.y1),
-					cmd.x2,
-					flipY(cmd.y2),
-					cmd.x,
-					flipY(cmd.y),
-				);
-				break;
-			case SVGPathData.QUAD_TO:
-				path.quadTo(cmd.x1, flipY(cmd.y1), cmd.x, flipY(cmd.y));
-				break;
-			case SVGPathData.CLOSE_PATH:
-				path.close();
-				break;
-		}
+	const notdefGlyph = new opentype.Glyph({
+		name: ".notdef",
+		advanceWidth: 1000,
+		path: new opentype.Path(),
 	});
 
-	return path;
-};
+	const 한글Glyphs = generateHangulGlyphs({
+		advanceWidth: AdvanceWidth,
+		fontHeight: FontHeight,
+		초성PathStrings,
+		중성PathStrings,
+		종성PathStrings,
+	});
 
-/** 초성SvgStrings: { 초성: { 모음 위치: [종성이 없는 초성 SvgString, 종성이 있는 초성 SvgString]} }  */
-export const generateHangulGlyphs = ({
-	advanceWidth,
-	fontHeight,
-	초성SvgStrings,
-	중성SvgStrings,
-	종성SvgStrings,
-}: {
-	advanceWidth: number;
-	fontHeight: number;
-	초성SvgStrings: Record<
-		(typeof 초성_LIST)[number],
-		{ [T in keyof typeof 중성Type]: [string, string] }
-	>;
-	중성SvgStrings: Record<(typeof 중성_LIST)[number], string>;
-	종성SvgStrings: Record<(typeof 종성_LIST)[number], string>;
-}) => {
-	const glyphs = [];
-	for (let 중성Index = 0; 중성Index < 중성_LIST.length; 중성Index++) {
-		for (let 종성Index = 0; 종성Index < 종성_LIST.length; 종성Index++) {
-			for (let 초성Index = 0; 초성Index < 초성_LIST.length; 초성Index++) {
-				const curr종성Type = 중성ItemType[중성_LIST[중성Index]];
-				const [종성X초성, 종성O초성] =
-					초성SvgStrings[초성_LIST[초성Index]][curr종성Type];
-				const 초성 = 종성Index === 0 ? 종성X초성 : 종성O초성;
+	const compatibility자모Glyphs = generateGlyphs({
+		advanceWidth: AdvanceWidth,
+		fontHeight: FontHeight,
+		glyphUnicodeOffset: 12593,
+		glyphsList: [
+			"ㄱ",
+			"ㄲ",
+			"ㄳ",
+			"ㄴ",
+			"ㄵ",
+			"ㄶ",
+			"ㄷ",
+			"ㄸ",
+			"ㄹ",
+			"ㄺ",
+			"ㄻ",
+			"ㄼ",
+			"ㄽ",
+			"ㄾ",
+			"ㄿ",
+			"ㅀ",
+			"ㅁ",
+			"ㅂ",
+			"ㅃ",
+			"ㅄ",
+			"ㅅ",
+			"ㅆ",
+			"ㅇ",
+			"ㅈ",
+			"ㅉ",
+			"ㅊ",
+			"ㅋ",
+			"ㅌ",
+			"ㅍ",
+			"ㅎ",
+			"ㅏ",
+			"ㅐ",
+			"ㅑ",
+			"ㅒ",
+			"ㅓ",
+			"ㅔ",
+			"ㅕ",
+			"ㅖ",
+			"ㅗ",
+			"ㅘ",
+			"ㅙ",
+			"ㅚ",
+			"ㅛ",
+			"ㅜ",
+			"ㅝ",
+			"ㅞ",
+			"ㅟ",
+			"ㅠ",
+			"ㅡ",
+			"ㅢ",
+			"ㅣ",
+		],
+		svgPathStrings: {
+			ㄱ: 초성PathStrings.ㄱ.VowelDown[0],
+			ㄲ: 초성PathStrings.ㄲ.VowelDown[0],
+			ㄳ: 종성PathStrings.ㄳ[0],
+			ㄴ: 초성PathStrings.ㄴ.VowelDown[0],
+			ㄵ: 종성PathStrings.ㄵ[0],
+			ㄶ: 종성PathStrings.ㄶ[0],
+			ㄷ: 초성PathStrings.ㄷ.VowelDown[0],
+			ㄸ: 초성PathStrings.ㄸ.VowelDown[0],
+			ㄹ: 초성PathStrings.ㄹ.VowelDown[0],
+			ㄺ: 종성PathStrings.ㄺ[0],
+			ㄻ: 종성PathStrings.ㄻ[0],
+			ㄼ: 종성PathStrings.ㄼ[0],
+			ㄽ: 종성PathStrings.ㄽ[0],
+			ㄾ: 종성PathStrings.ㄾ[0],
+			ㄿ: 종성PathStrings.ㄿ[0],
+			ㅀ: 종성PathStrings.ㅀ[0],
+			ㅁ: 초성PathStrings.ㅁ.VowelDown[0],
+			ㅂ: 초성PathStrings.ㅂ.VowelDown[0],
+			ㅃ: 초성PathStrings.ㅃ.VowelDown[0],
+			ㅄ: 종성PathStrings.ㅄ[0],
+			ㅅ: 초성PathStrings.ㅅ.VowelDown[0],
+			ㅆ: 초성PathStrings.ㅆ.VowelDown[0],
+			ㅇ: 초성PathStrings.ㅇ.VowelDown[0],
+			ㅈ: 초성PathStrings.ㅈ.VowelDown[0],
+			ㅉ: 초성PathStrings.ㅉ.VowelDown[0],
+			ㅊ: 초성PathStrings.ㅊ.VowelDown[0],
+			ㅋ: 초성PathStrings.ㅋ.VowelDown[0],
+			ㅌ: 초성PathStrings.ㅌ.VowelDown[0],
+			ㅍ: 초성PathStrings.ㅍ.VowelDown[0],
+			ㅎ: 초성PathStrings.ㅎ.VowelDown[0],
+			ㅏ: 중성PathStrings.ㅏ[0],
+			ㅐ: 중성PathStrings.ㅐ[0],
+			ㅑ: 중성PathStrings.ㅑ[0],
+			ㅒ: 중성PathStrings.ㅒ[0],
+			ㅓ: 중성PathStrings.ㅓ[0],
+			ㅔ: 중성PathStrings.ㅔ[0],
+			ㅕ: 중성PathStrings.ㅕ[0],
+			ㅖ: 중성PathStrings.ㅖ[0],
+			ㅗ: 중성PathStrings.ㅗ[0],
+			ㅘ: 중성PathStrings.ㅘ[0],
+			ㅙ: 중성PathStrings.ㅙ[0],
+			ㅚ: 중성PathStrings.ㅚ[0],
+			ㅛ: 중성PathStrings.ㅛ[0],
+			ㅜ: 중성PathStrings.ㅜ[0],
+			ㅝ: 중성PathStrings.ㅝ[0],
+			ㅞ: 중성PathStrings.ㅞ[0],
+			ㅟ: 중성PathStrings.ㅟ[0],
+			ㅠ: 중성PathStrings.ㅠ[0],
+			ㅡ: 중성PathStrings.ㅡ[0],
+			ㅢ: 중성PathStrings.ㅢ[0],
+			ㅣ: 중성PathStrings.ㅣ[0],
+		},
+	});
+	const 초성Glyphs = generateGlyphs({
+		advanceWidth: AdvanceWidth,
+		fontHeight: FontHeight,
+		glyphUnicodeOffset: 4352,
+		glyphsList: 초성_LIST,
+		svgPathStrings: Object.fromEntries(
+			초성_LIST.map((초성) => [초성, 초성PathStrings[초성].VowelRight[0]]),
+		) as Record<(typeof 초성_LIST)[number], string>,
+		paddingRatio: { x: 0.1, y: 0.2 },
+	});
+	const 중성Glyphs = generateGlyphs({
+		advanceWidth: AdvanceWidth,
+		fontHeight: FontHeight,
+		glyphUnicodeOffset: 4449,
+		glyphsList: 중성_LIST,
+		svgPathStrings: Object.fromEntries(
+			중성_LIST.map((중성) => [중성, 중성PathStrings[중성][0]]),
+		) as Record<(typeof 중성_LIST)[number], string>,
+		paddingRatio: { x: 0.1, y: 0.1 },
+	});
 
-				const unicode =
-					44032 + 초성Index * 21 * 28 + 중성Index * 28 + 종성Index;
-				const 초성PathDefinition = 초성.match(/<path[^>]*d="([^"]+)"/)![1];
-				const 중성PathDefinition = 중성SvgStrings[중성_LIST[중성Index]].match(
-					/<path[^>]*d="([^"]+)"/,
-				)![1];
-				const 종성PathDefinition = 종성SvgStrings[종성_LIST[종성Index]].match(
-					/<path[^>]*d="([^"]+)"/,
-				)![1];
-				const glyphSvgPathDefinition = mergeSVGPathDefinitions([
-					초성PathDefinition,
-					중성PathDefinition,
-					종성PathDefinition,
-				]);
+	const 종성List = 종성_LIST.slice(1) as Exclude<
+		(typeof 종성_LIST)[number],
+		""
+	>[];
+	const 종성Glyphs = generateGlyphs({
+		advanceWidth: AdvanceWidth,
+		fontHeight: FontHeight,
+		glyphUnicodeOffset: 4520,
+		glyphsList: 종성List,
+		svgPathStrings: Object.fromEntries(
+			종성List.map((종성) => [종성, 종성PathStrings[종성][0]]),
+		) as Record<Exclude<(typeof 종성_LIST)[number], "">[number], string>,
+		paddingRatio: { x: 0.1, y: 0.2 },
+	});
 
-				glyphs.push(
-					new opentype.Glyph({
-						name: String.fromCharCode(unicode),
-						unicode: unicode,
-						advanceWidth,
-						path: svgPathToOpentypePath(glyphSvgPathDefinition, fontHeight),
-					}),
-				);
-			}
-		}
-	}
+	// FIXME: path 너비에 의해 결정되기 때문에 특수문자 관련 처리 필요
+	// FIXME: 영문 소문자, 특수문자 등 width 반영
+	const basicGlyphs = generateGlyphs({
+		advanceWidth: AdvanceWidth,
+		fontHeight: FontHeight,
+		glyphUnicodeOffset: 33,
+		glyphsList: BASIC_LIST,
+		svgPathStrings: basicPathStrings,
+		paddingRatio: { x: 0.1, y: 0.2 },
+	});
 
-	return glyphs;
-};
+	const font = new opentype.Font({
+		familyName: "hanja-font",
+		styleName: "Medium",
+		unitsPerEm: AdvanceWidth,
+		glyphs: [
+			notdefGlyph,
+			...초성Glyphs,
+			...중성Glyphs,
+			...종성Glyphs,
+			...한글Glyphs,
+			...compatibility자모Glyphs,
+			...basicGlyphs,
+		],
 
-export const generateGlyphs = <T extends string>({
-	advanceWidth,
-	fontHeight,
-	svgPathStrings,
-	glyphsList,
-	glyphUnicodeOffset,
-}: {
-	advanceWidth: number;
-	fontHeight: number;
-	svgPathStrings: Record<T, string>;
-	glyphsList: ReadonlyArray<T>;
-	glyphUnicodeOffset: number;
-}) => {
-	const glyphs = [];
+		ascender: 2048,
+		descender: -0,
+	});
 
-	for (
-		let glyphSvgIndex = 0;
-		glyphSvgIndex < glyphsList.length;
-		glyphSvgIndex++
-	) {
-		const currGlphy = glyphsList[glyphSvgIndex];
-		const unicode = glyphSvgIndex + glyphUnicodeOffset;
-		const pathDefinition = svgPathStrings[currGlphy].match(
-			/<path[^>]*d="([^"]+)"/,
-		)![1];
-
-		glyphs.push(
-			new opentype.Glyph({
-				name: String.fromCharCode(unicode),
-				unicode: unicode,
-				advanceWidth,
-				path: svgPathToOpentypePath(pathDefinition, fontHeight),
-			}),
-		);
-	}
-
-	return glyphs;
+	return font;
 };
