@@ -9,26 +9,24 @@ import {
 	get초성2PathStrings,
 } from "./image";
 
-export const generateFont = async (
-	template: [
-		HTMLImageElement,
-		HTMLImageElement,
-		HTMLImageElement,
-		HTMLImageElement,
-		HTMLImageElement,
-	],
-) => {
+export const generateFont = async (template: {
+	초성1: HTMLImageElement;
+	초성2: HTMLImageElement;
+	중성: HTMLImageElement;
+	종성: HTMLImageElement;
+	영어특수문자: HTMLImageElement;
+}) => {
 	const TEMPLATE_GRID_RATIO = Math.floor((5 / 6) * 100) / 100;
 	const FontHeight = 2048;
 	const AdvanceWidth = FontHeight * TEMPLATE_GRID_RATIO;
 
 	const 초성PathStrings = {
-		...(await get초성1PathStrings(template[0])),
-		...(await get초성2PathStrings(template[1])),
+		...(await get초성1PathStrings(template.초성1)),
+		...(await get초성2PathStrings(template.초성2)),
 	};
-	const 중성PathStrings = await get중성PathStrings(template[2]);
-	const 종성PathStrings = await get종성PathStrings(template[3]);
-	const basicPathStrings = await geBasicPathStrings(template[4]);
+	const 중성PathStrings = await get중성PathStrings(template.중성);
+	const 종성PathStrings = await get종성PathStrings(template.종성);
+	const basicPathStrings = await geBasicPathStrings(template.영어특수문자);
 
 	const notdefGlyph = new opentype.Glyph({
 		name: ".notdef",
