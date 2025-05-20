@@ -1,12 +1,6 @@
-import { Base64 } from "./types";
+import { Base64, 중성Paths, 초성Paths } from "./types";
 import Potrace from "potrace";
-import {
-	BASIC_LIST,
-	종성_LIST,
-	중성_LIST,
-	중성Type,
-	초성_LIST,
-} from "./constants";
+import { 중성Type } from "./constants";
 
 export const convertImageToSvgString = (base64: Base64): Promise<string> => {
 	return new Promise((resolve, reject) => {
@@ -28,7 +22,7 @@ export const convertImageToSvgString = (base64: Base64): Promise<string> => {
 	});
 };
 
-const getSvgPathString = (svgString: string) => {
+const parseSvgPathString = (svgString: string) => {
 	return svgString.match(/<path[^>]*d="([^"]+)"/)![1];
 };
 
@@ -40,18 +34,19 @@ export const sliceImage = ({
 	image: HTMLImageElement;
 	rows: number;
 	cols: number;
-}): Base64[] => {
+}) => {
 	const canvas = document.createElement("canvas");
 	const ctx = canvas.getContext("2d");
-	const slices: Base64[] = [];
+	const slices: Base64[][] = new Array(rows)
+		.fill(0)
+		.map(() => new Array(cols).fill(""));
 	const sliceWidth = image.width / cols;
 	const sliceHeight = image.height / rows;
 	canvas.width = sliceWidth;
 	canvas.height = sliceHeight;
 
 	if (!ctx) {
-		// TODO: Error
-		return [];
+		throw new Error("Unexpected Error: invalid ctx");
 	}
 
 	for (let y = 0; y < rows; y++) {
@@ -68,246 +63,107 @@ export const sliceImage = ({
 				sliceWidth,
 				sliceHeight,
 			);
-			slices.push(canvas.toDataURL() as Base64);
+			slices[y][x] = canvas.toDataURL() as Base64;
 		}
 	}
 
-	return slices;
+	return { images: slices, width: sliceWidth, height: sliceHeight };
 };
 
-export const get초성1PathStrings = async (image: HTMLImageElement) => {
-	const imgStrings: Record<
-		string,
-		Record<keyof typeof 중성Type, string[]>
-	> = {};
-	const gridImages = await Promise.all(
-		sliceImage({
-			image,
-			rows: 12,
-			cols: 8,
-		}).map(async (imgStr) => {
-			const svgString = await convertImageToSvgString(imgStr);
-			return getSvgPathString(svgString);
-		}),
-	);
-	[...초성_LIST.slice(0, 12)].forEach((초성, index) => {
-		const images = gridImages.slice(index * 8, index * 8 + 8);
-		const value = {
-			[중성Type.VowelRight]: [images[0], images[1]],
-			[중성Type.VowelDown]: [images[2], images[3]],
-			[중성Type.VowelRightDown]: [images[4], images[7]],
-			[중성Type.Vowelㅡ]: [images[5], images[3]],
-			[중성Type.Vowelㅢ]: [images[6], images[7]],
-		};
+const generate초성PathType = (
+	rowGlyphStrs: (string | null)[],
+	rowImages: string[],
+) => {
+	if (rowGlyphStrs[0] === null) {
+		return {};
+	}
 
-		imgStrings[초성] = value;
-	});
-
-	return imgStrings as Record<
-		Extract<
-			(typeof 초성_LIST)[number],
-			| "ㄱ"
-			| "ㄲ"
-			| "ㄴ"
-			| "ㄷ"
-			| "ㄸ"
-			| "ㄹ"
-			| "ㅁ"
-			| "ㅂ"
-			| "ㅃ"
-			| "ㅅ"
-			| "ㅆ"
-			| "ㅇ"
-		>,
-		Record<keyof typeof 중성Type, [string, string]>
-	>;
+	return {
+		[rowGlyphStrs[0]]: {
+			[중성Type.VowelRight]: [rowImages[0], rowImages[1]],
+			[중성Type.VowelDown]: [rowImages[2], rowImages[3]],
+			[중성Type.VowelRightDown]: [rowImages[4], rowImages[7]],
+			[중성Type.Vowelㅡ]: [rowImages[5], rowImages[3]],
+			[중성Type.Vowelㅢ]: [rowImages[6], rowImages[7]],
+		},
+	};
 };
 
-export const get초성2PathStrings = async (image: HTMLImageElement) => {
-	const imgStrings: Record<
-		string,
-		Record<keyof typeof 중성Type, string[]>
-	> = {};
-	const gridImages = await Promise.all(
-		sliceImage({
-			image,
-			rows: 7,
-			cols: 8,
-		}).map(async (imgStr) => {
-			const svgString = await convertImageToSvgString(imgStr);
-			return getSvgPathString(svgString);
-		}),
-	);
-	[...초성_LIST.slice(12)].forEach((초성, index) => {
-		const images = gridImages.slice(index * 8, index * 8 + 8);
-		const value = {
-			[중성Type.VowelRight]: [images[0], images[1]],
-			[중성Type.VowelDown]: [images[2], images[3]],
-			[중성Type.VowelRightDown]: [images[4], images[7]],
-			[중성Type.Vowelㅡ]: [images[5], images[3]],
-			[중성Type.Vowelㅢ]: [images[6], images[7]],
-		};
-		imgStrings[초성] = value;
+const generate중성PathType = (
+	rowGlyphStrs: (string | null)[],
+	rowImages: string[],
+) => {
+	const result: Record<string, 중성Paths> = {};
+	rowGlyphStrs.forEach((str, index) => {
+		if (index % 2 === 1 || str === null) return;
+		result[str] = [rowImages[index], rowImages[index + 1]];
 	});
-
-	return imgStrings as Record<
-		Extract<
-			(typeof 초성_LIST)[number],
-			"ㅈ" | "ㅉ" | "ㅊ" | "ㅋ" | "ㅌ" | "ㅍ" | "ㅎ"
-		>,
-		Record<keyof typeof 중성Type, [string, string]>
-	>;
-};
-export const get중성PathStrings = async (image: HTMLImageElement) => {
-	const IMG_TEMPLATE_중성 = [
-		"ㅏ",
-		"ㅏ",
-		"ㅐ",
-		"ㅐ",
-		"ㅑ",
-		"ㅑ",
-		"ㅒ",
-		"ㅒ",
-		null,
-		null,
-		"ㅓ",
-		"ㅓ",
-		"ㅔ",
-		"ㅔ",
-		"ㅕ",
-		"ㅕ",
-		"ㅖ",
-		"ㅖ",
-		null,
-		null,
-		"ㅗ",
-		"ㅗ",
-		"ㅘ",
-		"ㅘ",
-		"ㅙ",
-		"ㅙ",
-		"ㅚ",
-		"ㅚ",
-		null,
-		null,
-		"ㅛ",
-		"ㅛ",
-		"ㅜ",
-		"ㅜ",
-		"ㅝ",
-		"ㅝ",
-		"ㅞ",
-		"ㅞ",
-		"ㅟ",
-		"ㅟ",
-		"ㅠ",
-		"ㅠ",
-		"ㅡ",
-		"ㅡ",
-		"ㅢ",
-		"ㅢ",
-		"ㅣ",
-		"ㅣ",
-		null,
-		null,
-	];
-
-	const imgStrings: Record<string, string[]> = {};
-	const gridImages = await Promise.all(
-		sliceImage({
-			image,
-			rows: 5,
-			cols: 10,
-		}).map(async (imgStr) => {
-			const svgString = await convertImageToSvgString(imgStr);
-			return getSvgPathString(svgString);
-		}),
-	);
-
-	IMG_TEMPLATE_중성.forEach((중성, index) => {
-		if (중성 === null) return;
-		if (imgStrings[중성]) {
-			imgStrings[중성].push(gridImages[index]);
-		} else {
-			imgStrings[중성] = [gridImages[index]];
-		}
-	});
-
-	return imgStrings as Record<(typeof 중성_LIST)[number], [string, string]>;
-};
-export const get종성PathStrings = async (image: HTMLImageElement) => {
-	const IMG_TEMPLATE_종성 = [
-		"ㄱ",
-		"ㄲ",
-		"ㄳ",
-		"ㄴ",
-		"ㄵ",
-		"ㄶ",
-		"ㄷ",
-		null,
-		"ㄹ",
-		"ㄺ",
-		"ㄻ",
-		"ㄼ",
-		"ㄽ",
-		"ㄾ",
-		"ㄿ",
-		"ㅀ",
-		"ㅁ",
-		"ㅂ",
-		"ㅄ",
-		"ㅅ",
-		"ㅆ",
-		"ㅇ",
-		null,
-		null,
-		"ㅈ",
-		"ㅊ",
-		"ㅋ",
-		"ㅌ",
-		"ㅍ",
-		"ㅎ",
-		null,
-		null,
-	];
-
-	const imgStrings: Record<string, string[]> = {};
-	const gridImages = await Promise.all(
-		sliceImage({
-			image,
-			rows: 4,
-			cols: 8,
-		}).map(async (imgStr) => {
-			const svgString = await convertImageToSvgString(imgStr);
-			return getSvgPathString(svgString);
-		}),
-	);
-
-	IMG_TEMPLATE_종성.forEach((종성, index) => {
-		if (종성 === null) return;
-
-		imgStrings[종성] = [gridImages[index]];
-	});
-
-	return imgStrings as Record<(typeof 종성_LIST)[number], [string]>;
+	return result;
 };
 
-export const geBasicPathStrings = async (image: HTMLImageElement) => {
-	const imgStrings: Record<string, string> = {};
-	const gridImages = await Promise.all(
-		sliceImage({
-			image,
-			rows: 12,
-			cols: 8,
-		}).map(async (imgStr) => {
-			const svgString = await convertImageToSvgString(imgStr);
-			return getSvgPathString(svgString);
-		}),
-	);
+const generateDefaultPathType = (
+	rowGlyphStrs: (string | null)[],
+	rowImages: string[],
+) => {
+	const result: Record<string, string> = {};
+	rowGlyphStrs.forEach((str, index) => {
+		if (str === null) return;
+		result[str] = rowImages[index];
+	});
+	return result;
+};
+type PathType<T extends "초성" | "중성" | "DEFAULT"> = T extends "초성"
+	? 초성Paths
+	: T extends "중성"
+		? 중성Paths
+		: string;
 
-	BASIC_LIST.forEach((basic, index) => {
-		imgStrings[basic] = gridImages[index];
+/**
+ * 초성 템플릿: 한 행은 모두 같은 초성, 중성, 종성에 따라 모양이 다름
+ *
+ * 중성 템플릿: 한 행의 2개는 같은 중성, 종성에 따라 모양이 다름
+ */
+export const getPathStrings = async <T extends "초성" | "중성" | "DEFAULT">({
+	templateImage,
+	templateGlyphGrid,
+	glyphType,
+}: {
+	templateImage: HTMLImageElement;
+	templateGlyphGrid: (string | null)[][];
+	glyphType: T;
+}): Promise<{
+	paths: Record<string, PathType<T>>;
+	width: number;
+	height: number;
+}> => {
+	const rows = templateGlyphGrid.length;
+	const cols = templateGlyphGrid[0].length;
+	const {
+		images: sliceImages,
+		width,
+		height,
+	} = sliceImage({
+		image: templateImage,
+		rows,
+		cols,
 	});
 
-	return imgStrings as Record<(typeof BASIC_LIST)[number], string>;
+	const generateFn =
+		glyphType === "초성"
+			? generate초성PathType
+			: glyphType === "중성"
+				? generate중성PathType
+				: generateDefaultPathType;
+
+	let paths = {};
+	for (let index = 0; index < templateGlyphGrid.length; index++) {
+		const rowGlyphs = templateGlyphGrid[index];
+		const svgStrs = await Promise.all(
+			sliceImages[index].map((image) => convertImageToSvgString(image)),
+		);
+		const pathStrs = await Promise.all(svgStrs.map(parseSvgPathString));
+		paths = { ...paths, ...generateFn(rowGlyphs, pathStrs) };
+	}
+
+	return { paths, width, height };
 };

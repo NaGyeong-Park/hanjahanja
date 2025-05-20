@@ -1,12 +1,7 @@
 import { SVGPathData } from "svg-pathdata";
 import opentype from "opentype.js";
-import {
-	초성_LIST,
-	중성_LIST,
-	종성_LIST,
-	중성ItemType,
-	중성Type,
-} from "./constants";
+import { 초성_LIST, 중성_LIST, 종성_LIST, 중성ItemType } from "./constants";
+import { 중성Paths, 초성Paths } from "./types";
 
 export const mergeSVGPathDefinitions = (paths: string[]) => {
 	return paths.join(" ");
@@ -111,12 +106,9 @@ export const generateHangulGlyphs = ({
 }: {
 	advanceWidth: number;
 	fontHeight: number;
-	초성PathStrings: Record<
-		(typeof 초성_LIST)[number],
-		{ [T in keyof typeof 중성Type]: [string, string] }
-	>;
-	중성PathStrings: Record<(typeof 중성_LIST)[number], [string, string]>;
-	종성PathStrings: Record<(typeof 종성_LIST)[number], [string]>;
+	초성PathStrings: Record<string, 초성Paths>;
+	중성PathStrings: Record<string, 중성Paths>;
+	종성PathStrings: Record<string, string>;
 }) => {
 	const glyphs = [];
 	for (let 중성Index = 0; 중성Index < 중성_LIST.length; 중성Index++) {
@@ -138,7 +130,7 @@ export const generateHangulGlyphs = ({
 						초성PathStrings[초성_LIST[초성Index]][curr중성Type][1],
 					);
 					mergeSvgStringList.push(중성PathStrings[중성_LIST[중성Index]][1]);
-					mergeSvgStringList.push(종성PathStrings[종성_LIST[종성Index]][0]);
+					mergeSvgStringList.push(종성PathStrings[종성_LIST[종성Index]]);
 				}
 
 				const glyphSvgPathDefinition =
@@ -167,19 +159,19 @@ export const generateGlyphs = <T extends string>({
 	advanceWidth,
 	fontHeight,
 	paddingRatio = { x: 0, y: 0 },
-	svgPathStrings,
+	svgPathDatas,
 	glyphsList,
 	glyphUnicodeOffset,
 }: {
 	advanceWidth: number;
 	fontHeight: number;
 	paddingRatio?: { x: number; y: number };
-	svgPathStrings: Record<T, string>;
+	svgPathDatas: Record<T, { path: string; width?: number; height?: number }>;
 	glyphsList: ReadonlyArray<T>;
 	glyphUnicodeOffset: number;
 }) => {
 	const glyphs = [];
-	opentype.Glyph;
+
 	for (
 		let glyphSvgIndex = 0;
 		glyphSvgIndex < glyphsList.length;
@@ -187,6 +179,7 @@ export const generateGlyphs = <T extends string>({
 	) {
 		const currGlphy = glyphsList[glyphSvgIndex];
 		const unicode = glyphSvgIndex + glyphUnicodeOffset;
+		const { path } = svgPathDatas[currGlphy];
 
 		glyphs.push(
 			new opentype.Glyph({
@@ -194,7 +187,7 @@ export const generateGlyphs = <T extends string>({
 				unicode: unicode,
 				advanceWidth,
 				path: svgPathToOpentypePath({
-					d: svgPathStrings[currGlphy],
+					d: path,
 					fontSize: { x: advanceWidth, y: fontHeight },
 					paddingRatio,
 				}),
