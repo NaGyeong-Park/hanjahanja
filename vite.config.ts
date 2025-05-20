@@ -4,13 +4,13 @@ import wyw from "@wyw-in-js/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [
-		react(),
-		wyw({
-			include: ["**/*.{ts,tsx}"],
-			babelOptions: {
-				presets: ["@wyw-in-js/babel-preset"],
-			},
-		}),
-	],
+  plugins: [
+    react(),
+    wyw({
+      include: ["**/*.{ts,tsx}"],
+      babelOptions: {
+        presets: ["@wyw-in-js/babel-preset"],
+      },
+    }),
+  ],
 });

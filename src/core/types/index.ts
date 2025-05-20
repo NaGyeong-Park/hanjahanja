@@ -1,12 +1,12 @@
 export type Base64<imageType extends string = string> =
-	`data:image/${imageType};base64${string}`;
+  `data:image/${imageType};base64${string}`;
 
 export interface 초성Paths {
-	VowelRight: string[];
-	VowelDown: string[];
-	VowelRightDown: string[];
-	Vowelㅡ: string[];
-	Vowelㅢ: string[];
+  VowelRight: string[];
+  VowelDown: string[];
+  VowelRightDown: string[];
+  Vowelㅡ: string[];
+  Vowelㅢ: string[];
 }
 
 /**
