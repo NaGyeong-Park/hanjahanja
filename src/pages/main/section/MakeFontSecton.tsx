@@ -1,8 +1,9 @@
 import { ChangeEvent, useRef, useState } from "react";
-import { generateFont } from "../../../core";
 import { styled } from "@linaria/react";
-import { Font, load } from "opentype.js";
+import { Font, parse } from "opentype.js";
 import { colors } from "../../../constants/colors";
+import FontWorker from "../../../workers/font?worker";
+import { FontWorkerMessage, FontWorkerPayload } from "../../../types/worker";
 
 const Template = {
   초성1: "초성1",
@@ -37,21 +38,48 @@ export function MakeFontSecton() {
   const [loading, setLoading] = useState(false);
 
   const handleClickMakeFontButton = async () => {
-    try {
-      if (canSubmitTemplate(templates)) {
-        setLoading(true);
-        const font = await generateFont(templates);
-        fontRef.current = font;
-        font.download();
-        alert("다운로드 완료!");
-      }
-    } catch (error) {
-      console.error(error);
-      alert(
-        "다운로드에 실패하였습니다. 다시 시도하거나 개발자에게 문의해주세요.",
-      );
-    } finally {
-      setLoading(false);
+    const worker = new FontWorker();
+    if (canSubmitTemplate(templates)) {
+      setLoading(true);
+
+      const payload: FontWorkerPayload = {
+        초성1: await createImageBitmap(templates.초성1),
+        초성2: await createImageBitmap(templates.초성2),
+        중성: await createImageBitmap(templates.중성),
+        종성: await createImageBitmap(templates.종성),
+        영어특수문자: await createImageBitmap(templates.영어특수문자),
+      };
+
+      worker.postMessage(payload);
+
+      worker.onmessage = (event: MessageEvent<FontWorkerMessage>) => {
+        const message = event.data;
+        if (message.type === "font") {
+          if (message.success) {
+            const font = parse(message.arrayBuffer);
+            fontRef.current = font;
+            font.download();
+            alert("다운로드 완료!");
+          } else {
+            console.error(message.errorMessage);
+            alert(
+              "다운로드에 실패하였습니다. 다시 시도하거나 개발자에게 문의해주세요.",
+            );
+          }
+        }
+
+        setLoading(false);
+        worker.terminate();
+      };
+
+      worker.onerror = (e) => {
+        console.error("Worker error:", e);
+        alert(
+          "다운로드에 실패하였습니다. 다시 시도하거나 개발자에게 문의해주세요.",
+        );
+        setLoading(false);
+        worker.terminate();
+      };
     }
   };
 

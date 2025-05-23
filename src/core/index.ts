@@ -14,11 +14,11 @@ import { generateGlyphs, generateHangulGlyphs } from "./font";
 import { getPathStrings } from "./image";
 
 export const generateFont = async (template: {
-  초성1: HTMLImageElement;
-  초성2: HTMLImageElement;
-  중성: HTMLImageElement;
-  종성: HTMLImageElement;
-  영어특수문자: HTMLImageElement;
+  초성1: ImageBitmap;
+  초성2: ImageBitmap;
+  중성: ImageBitmap;
+  종성: ImageBitmap;
+  영어특수문자: ImageBitmap;
 }) => {
   const TEMPLATE_GRID_RATIO = Math.floor((5 / 6) * 100) / 100;
   const FontHeight = 2048;

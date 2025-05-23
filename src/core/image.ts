@@ -26,24 +26,30 @@ const parseSvgPathString = (svgString: string) => {
   return svgString.match(/<path[^>]*d="([^"]+)"/)![1];
 };
 
-export const sliceImage = ({
+const blobToBase64 = (blob: Blob): Promise<Base64> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as Base64);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+export const sliceImage = async ({
   image,
   rows,
   cols,
 }: {
-  image: HTMLImageElement;
+  image: ImageBitmap;
   rows: number;
   cols: number;
 }) => {
-  const canvas = document.createElement("canvas");
+  const sliceWidth = image.width / cols;
+  const sliceHeight = image.height / rows;
+  const canvas = new OffscreenCanvas(sliceWidth, sliceHeight);
   const ctx = canvas.getContext("2d");
   const slices: Base64[][] = new Array(rows)
     .fill(0)
     .map(() => new Array(cols).fill(""));
-  const sliceWidth = image.width / cols;
-  const sliceHeight = image.height / rows;
-  canvas.width = sliceWidth;
-  canvas.height = sliceHeight;
 
   if (!ctx) {
     throw new Error("Unexpected Error: invalid ctx");
@@ -63,7 +69,9 @@ export const sliceImage = ({
         sliceWidth,
         sliceHeight,
       );
-      slices[y][x] = canvas.toDataURL() as Base64;
+      const blob = await canvas.convertToBlob();
+      const base64 = (await blobToBase64(blob)) as Base64;
+      slices[y][x] = base64;
     }
   }
 
@@ -128,7 +136,7 @@ export const getPathStrings = async <T extends "초성" | "중성" | "DEFAULT">(
   templateGlyphGrid,
   glyphType,
 }: {
-  templateImage: HTMLImageElement;
+  templateImage: ImageBitmap;
   templateGlyphGrid: (string | null)[][];
   glyphType: T;
 }): Promise<{
@@ -142,7 +150,7 @@ export const getPathStrings = async <T extends "초성" | "중성" | "DEFAULT">(
     images: sliceImages,
     width,
     height,
-  } = sliceImage({
+  } = await sliceImage({
     image: templateImage,
     rows,
     cols,
