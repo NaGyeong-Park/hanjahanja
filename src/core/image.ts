@@ -23,7 +23,7 @@ export const convertImageToSvgString = (base64: Base64): Promise<string> => {
 };
 
 const parseSvgPathString = (svgString: string) => {
-  return svgString.match(/<path[^>]*d="([^"]+)"/)![1];
+  return svgString.match(/<path[^>]*d="([^"]+)"/)?.[1] ?? null;
 };
 
 const blobToBase64 = (blob: Blob): Promise<Base64> =>
@@ -80,7 +80,7 @@ export const sliceImage = async ({
 
 const generate초성PathType = (
   rowGlyphStrs: (string | null)[],
-  rowImages: string[],
+  rowImages: (string | null)[],
 ) => {
   if (rowGlyphStrs[0] === null) {
     return {};
@@ -99,24 +99,24 @@ const generate초성PathType = (
 
 const generate중성PathType = (
   rowGlyphStrs: (string | null)[],
-  rowImages: string[],
+  rowImages: (string | null)[],
 ) => {
   const result: Record<string, 중성Paths> = {};
   rowGlyphStrs.forEach((str, index) => {
     if (index % 2 === 1 || str === null) return;
-    result[str] = [rowImages[index], rowImages[index + 1]];
+    result[str] = [rowImages[index]!, rowImages[index + 1]!];
   });
   return result;
 };
 
 const generateDefaultPathType = (
   rowGlyphStrs: (string | null)[],
-  rowImages: string[],
+  rowImages: (string | null)[],
 ) => {
   const result: Record<string, string> = {};
   rowGlyphStrs.forEach((str, index) => {
     if (str === null) return;
-    result[str] = rowImages[index];
+    result[str] = rowImages[index]!;
   });
   return result;
 };
