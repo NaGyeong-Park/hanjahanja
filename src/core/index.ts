@@ -1,6 +1,7 @@
 import opentype from "opentype.js";
 import {
   BASIC_LIST,
+  COMPATIBILITY_자모_LIST,
   TEMPLATE_1,
   TEMPLATE_2,
   TEMPLATE_3,
@@ -23,6 +24,7 @@ export const generateFont = async (template: {
   const TEMPLATE_GRID_RATIO = Math.floor((5 / 6) * 100) / 100;
   const FontHeight = 2048;
   const AdvanceWidth = FontHeight * TEMPLATE_GRID_RATIO;
+  const KoreanAdvanceWidth = FontHeight * 0.8;
 
   const 초성PathStrings = {
     ...(
@@ -67,7 +69,7 @@ export const generateFont = async (template: {
   });
 
   const 한글Glyphs = generateHangulGlyphs({
-    advanceWidth: AdvanceWidth,
+    advanceWidth: KoreanAdvanceWidth,
     fontHeight: FontHeight,
     초성PathStrings,
     중성PathStrings,
@@ -78,59 +80,7 @@ export const generateFont = async (template: {
     advanceWidth: AdvanceWidth,
     fontHeight: FontHeight,
     glyphUnicodeOffset: 12593,
-    glyphsList: [
-      "ㄱ",
-      "ㄲ",
-      "ㄳ",
-      "ㄴ",
-      "ㄵ",
-      "ㄶ",
-      "ㄷ",
-      "ㄸ",
-      "ㄹ",
-      "ㄺ",
-      "ㄻ",
-      "ㄼ",
-      "ㄽ",
-      "ㄾ",
-      "ㄿ",
-      "ㅀ",
-      "ㅁ",
-      "ㅂ",
-      "ㅃ",
-      "ㅄ",
-      "ㅅ",
-      "ㅆ",
-      "ㅇ",
-      "ㅈ",
-      "ㅉ",
-      "ㅊ",
-      "ㅋ",
-      "ㅌ",
-      "ㅍ",
-      "ㅎ",
-      "ㅏ",
-      "ㅐ",
-      "ㅑ",
-      "ㅒ",
-      "ㅓ",
-      "ㅔ",
-      "ㅕ",
-      "ㅖ",
-      "ㅗ",
-      "ㅘ",
-      "ㅙ",
-      "ㅚ",
-      "ㅛ",
-      "ㅜ",
-      "ㅝ",
-      "ㅞ",
-      "ㅟ",
-      "ㅠ",
-      "ㅡ",
-      "ㅢ",
-      "ㅣ",
-    ],
+    glyphsList: COMPATIBILITY_자모_LIST,
     svgPathDatas: {
       ㄱ: { path: 초성PathStrings.ㄱ.VowelDown[0] },
       ㄲ: { path: 초성PathStrings.ㄲ.VowelDown[0] },
@@ -227,8 +177,6 @@ export const generateFont = async (template: {
     paddingRatio: { x: 0.1, y: 0.2 },
   });
 
-  // FIXME: path 너비에 의해 결정되기 때문에 특수문자 관련 처리 필요
-  // FIXME: 영문 소문자, 특수문자 등 width 반영
   const basicSvgPathDatas = Object.fromEntries(
     Object.keys(basicPathStrings).map((key) => [
       key,
@@ -244,18 +192,17 @@ export const generateFont = async (template: {
   >;
 
   const basicGlyphs = generateGlyphs({
-    advanceWidth: AdvanceWidth,
     fontHeight: FontHeight,
     glyphUnicodeOffset: 33,
     glyphsList: BASIC_LIST,
     svgPathDatas: basicSvgPathDatas,
-    paddingRatio: { x: 0.1, y: 0.2 },
+    paddingRatio: { x: 0.1, y: 0 },
   });
 
   const font = new opentype.Font({
     familyName: "hanja-font",
     styleName: "Medium",
-    unitsPerEm: AdvanceWidth,
+    unitsPerEm: FontHeight,
     glyphs: [
       notdefGlyph,
       ...초성Glyphs,
@@ -266,8 +213,8 @@ export const generateFont = async (template: {
       ...basicGlyphs,
     ],
 
-    ascender: 2048,
-    descender: -0,
+    ascender: FontHeight,
+    descender: 0,
   });
 
   return font;

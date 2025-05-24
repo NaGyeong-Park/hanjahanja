@@ -1,22 +1,19 @@
 import { SVGPathData } from "svg-pathdata";
 import opentype from "opentype.js";
-import { 초성_LIST, 중성_LIST, 종성_LIST, 중성ItemType } from "./constants";
+import {
+  초성_LIST,
+  중성_LIST,
+  종성_LIST,
+  중성ItemType,
+  COMPATIBILITY_자모_LIST,
+} from "./constants";
 import { 중성Paths, 초성Paths } from "./types";
 
 export const mergeSVGPathDefinitions = (paths: string[]) => {
   return paths.join(" ");
 };
 
-export const svgPathToOpentypePath = ({
-  d,
-  fontSize,
-  paddingRatio,
-}: {
-  d: string;
-  fontSize: { x: number; y: number };
-  paddingRatio: { x: number; y: number };
-}) => {
-  const path = new opentype.Path();
+const getSvgPathBoxSizes = (d: string) => {
   const commands = new SVGPathData(d).toAbs().commands;
 
   let minX = Infinity,
@@ -42,24 +39,46 @@ export const svgPathToOpentypePath = ({
   const boxWidth = maxX - minX;
   const boxHeight = maxY - minY;
 
-  const paddingX = fontSize.x * paddingRatio.x;
-  const paddingY = fontSize.y * paddingRatio.y;
+  return { boxWidth, boxHeight, minX, minY, maxY, maxX };
+};
 
-  const innerWidth = fontSize.x - paddingX * 2;
-  const innerHeight = fontSize.y - paddingY * 2;
+export const svgPathToOpentypePath = ({
+  d,
+  fontHeight,
+  paddingRatio,
+  advanceWidth,
+  baselineOffset = 0,
+}: {
+  d: string;
+  fontHeight: number;
+  paddingRatio: { x: number; y: number };
+  advanceWidth?: number;
+  baselineOffset?: number;
+}) => {
+  const path = new opentype.Path();
+  const commands = new SVGPathData(d).toAbs().commands;
+  const { boxHeight, boxWidth, minX, minY } = getSvgPathBoxSizes(d);
 
-  const scaleX = innerWidth / boxWidth;
-  const scaleY = innerHeight / boxHeight;
-  const scale = Math.min(scaleX, scaleY);
+  const paddingY = fontHeight * paddingRatio.y;
+  const paddingX = advanceWidth ? advanceWidth * paddingRatio.x : 0;
+
+  const innerHeight = fontHeight - paddingY * 2;
+  const innerWidth = advanceWidth ? advanceWidth - paddingX * 2 : Infinity;
+
+  const scaleByHeight = innerHeight / boxHeight;
+  const scaleByWidth = advanceWidth ? innerWidth / boxWidth : Infinity;
+  const scale = Math.min(scaleByHeight, scaleByWidth);
 
   const scaledWidth = boxWidth * scale;
   const scaledHeight = boxHeight * scale;
 
-  const offsetX = (fontSize.x - scaledWidth) / 2;
-  const offsetY = (fontSize.y - scaledHeight) / 2;
+  const effectiveAdvanceWidth =
+    advanceWidth || scaledWidth + scaledWidth * paddingRatio.x * 2;
+  const offsetX = (effectiveAdvanceWidth - scaledWidth) / 2;
+  const offsetY = (fontHeight - scaledHeight) / 2 + baselineOffset;
 
   const transformX = (x: number) => (x - minX) * scale + offsetX;
-  const transformY = (y: number) => fontSize.x - ((y - minY) * scale + offsetY);
+  const transformY = (y: number) => fontHeight - ((y - minY) * scale + offsetY);
 
   commands.forEach((cmd) => {
     switch (cmd.type) {
@@ -93,7 +112,10 @@ export const svgPathToOpentypePath = ({
     }
   });
 
-  return path;
+  return {
+    path,
+    width: effectiveAdvanceWidth,
+  };
 };
 
 /** 초성PathStrings: { 초성: { 모음 위치: [종성이 없는 초성 SvgString, 종성이 있는 초성 SvgString]} }  */
@@ -136,16 +158,19 @@ export const generateHangulGlyphs = ({
         const glyphSvgPathDefinition =
           mergeSVGPathDefinitions(mergeSvgStringList);
 
+        const { path } = svgPathToOpentypePath({
+          d: glyphSvgPathDefinition,
+          fontHeight,
+          paddingRatio: { x: 0.05, y: 0.1 },
+          advanceWidth,
+        });
+
         glyphs.push(
           new opentype.Glyph({
             name: String.fromCharCode(unicode),
             unicode: unicode,
             advanceWidth,
-            path: svgPathToOpentypePath({
-              d: glyphSvgPathDefinition,
-              fontSize: { x: advanceWidth, y: fontHeight },
-              paddingRatio: { x: 0.05, y: 0.1 },
-            }),
+            path,
           }),
         );
       }
@@ -156,21 +181,50 @@ export const generateHangulGlyphs = ({
 };
 
 export const generateGlyphs = <T extends string>({
-  advanceWidth,
   fontHeight,
   paddingRatio = { x: 0, y: 0 },
   svgPathDatas,
   glyphsList,
   glyphUnicodeOffset,
+  advanceWidth,
 }: {
-  advanceWidth: number;
   fontHeight: number;
   paddingRatio?: { x: number; y: number };
   svgPathDatas: Record<T, { path: string; width?: number; height?: number }>;
   glyphsList: ReadonlyArray<T>;
   glyphUnicodeOffset: number;
+  advanceWidth?: number;
 }) => {
+  const getBaselineOffset = (char: string): number => {
+    const descenderChars = ["g", "j", "p", "q", "y"];
+    const superscriptChars = ["'", '"', "`"];
+    const centerChars = ["~", "^", "*", "-", "=", "+"];
+    const koreanSingleChars = [
+      ...초성_LIST,
+      ...중성_LIST,
+      ...종성_LIST,
+      ...COMPATIBILITY_자모_LIST,
+    ];
+
+    if (descenderChars.includes(char)) {
+      return fontHeight * 0.3;
+    }
+    if (superscriptChars.includes(char)) {
+      return -fontHeight * 0.5;
+    }
+    if (centerChars.includes(char) || koreanSingleChars.includes(char)) {
+      return -fontHeight * 0.25;
+    }
+    return 0;
+  };
+
   const glyphs = [];
+  const maxPathHeight = Math.max(
+    ...Object.values(svgPathDatas).map(
+      (value: any) => getSvgPathBoxSizes(value.path).boxHeight,
+    ),
+  );
+  const heightRatio = fontHeight / maxPathHeight;
 
   for (
     let glyphSvgIndex = 0;
@@ -180,17 +234,24 @@ export const generateGlyphs = <T extends string>({
     const currGlphy = glyphsList[glyphSvgIndex];
     const unicode = glyphSvgIndex + glyphUnicodeOffset;
     const { path } = svgPathDatas[currGlphy];
+    const { boxHeight } = getSvgPathBoxSizes(path);
+
+    const baselineOffset = getBaselineOffset(currGlphy);
+
+    const { path: glyphPath, width } = svgPathToOpentypePath({
+      d: path,
+      fontHeight: Math.floor(boxHeight * heightRatio),
+      paddingRatio,
+      advanceWidth,
+      baselineOffset,
+    });
 
     glyphs.push(
       new opentype.Glyph({
         name: String.fromCharCode(unicode),
         unicode: unicode,
-        advanceWidth,
-        path: svgPathToOpentypePath({
-          d: path,
-          fontSize: { x: advanceWidth, y: fontHeight },
-          paddingRatio,
-        }),
+        advanceWidth: advanceWidth || width,
+        path: glyphPath,
       }),
     );
   }
