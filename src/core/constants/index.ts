@@ -1,3 +1,11 @@
+export const FontTemplate = {
+  초성1: "초성1",
+  초성2: "초성2",
+  중성: "중성",
+  종성: "종성",
+  영어특수문자: "영어특수문자",
+} as const;
+
 export const 초성_LIST = [
   "ㄱ",
   "ㄲ",

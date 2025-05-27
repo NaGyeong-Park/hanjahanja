@@ -54,9 +54,14 @@ table {
 
 /* END RESET CSS */
 
+html {
+	scroll-behavior: smooth;
+}
+
 html *,
 *::before,
 *::after {
+
 	box-sizing: border-box;
   font-family: "Noto Sans", "Roboto", sans-serif;
 }
